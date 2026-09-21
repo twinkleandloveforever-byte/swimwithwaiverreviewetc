@@ -27,6 +27,10 @@ const reviews = [
     name: 'Riley Nakamura',
     text: 'Getting back into swimming after 6 yrs. Coach really helped guide me thru, I enjoy class!',
   },
+  {
+    name: 'Sakina',
+    text: 'I loved her teaching',
+  },
 ];
 
 export function getReviews() {
