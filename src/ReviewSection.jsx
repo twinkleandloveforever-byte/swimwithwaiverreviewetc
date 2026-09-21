@@ -63,7 +63,7 @@ export default function ReviewSection() {
                 Thank You for Your Review!
               </h3>
               <p className="text-ocean-600 mb-6">
-                Your feedback means the world to us. It helps other families discover the joy of swimming.
+                Your feedback means the world to me. It helps other families discover the joy of swimming.
               </p>
               <button
                 onClick={() => setSubmitted(false)}
@@ -121,7 +121,7 @@ export default function ReviewSection() {
                   onChange={(e) => setFormData(prev => ({ ...prev, review: e.target.value }))}
                   rows={4}
                   className="w-full px-4 py-3 rounded-xl border border-ocean-200 focus:outline-none focus:border-cyan-500 resize-none"
-                  placeholder="Share your experience with Swim with Sairy..."
+                  placeholder="Share your experience with Sairy..."
                 />
               </div>
 
