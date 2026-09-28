@@ -2,17 +2,21 @@ import { useState, useEffect } from 'react';
 import { 
   Menu, X, Phone, Mail, MapPin, Clock, Users, Award, 
   Heart, CheckCircle, Waves, ChevronDown, GraduationCap, 
-  Target, Search, ArrowRight, CheckCircle2, XCircle 
+  Target, Search, ArrowRight, CheckCircle2, XCircle,
+  User, LogOut, ChevronDown as ChevronDownIcon, LogIn, UserPlus
 } from 'lucide-react';
 import ReviewsMarquee from './ReviewsMarquee';
 import SecretGallery, { PasswordModal } from './SecretGallery';
 import ReviewSection from './ReviewSection';
 import WaiverPage from './WaiverPage';
+import AuthModal from './AuthModal';
+import { supabase } from './lib/supabaseClient';
 
 // ============ NAVIGATION ============
-function Navbar() {
+function Navbar({ session, onAccountClick, onLogout }) {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -21,6 +25,16 @@ function Navbar() {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuOpen && !e.target.closest('[data-user-menu]')) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
 
   const scrollToSection = (id) => {
     const element = document.getElementById(id);
@@ -73,6 +87,46 @@ function Navbar() {
             >
               Inquire Now
             </button>
+
+            {session ? (
+              <div className="relative" data-user-menu>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-full border-2 border-ocean-200 hover:border-cyan-400 transition-colors bg-white/80"
+                >
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-400 to-ocean-600 flex items-center justify-center text-white text-xs font-bold">
+                    {(session.user?.email || '?')[0].toUpperCase()}
+                  </div>
+                  <span className="text-sm font-semibold text-ocean-800 max-w-[120px] truncate">
+                    {session.user?.email?.split('@')[0] || 'User'}
+                  </span>
+                  <ChevronDownIcon className="w-4 h-4 text-ocean-500" />
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-ocean-100 py-2 animate-fade-in z-50">
+                    <div className="px-4 py-2 border-b border-ocean-50">
+                      <p className="text-xs text-ocean-400 font-medium uppercase tracking-wider">Signed in as</p>
+                      <p className="text-sm text-ocean-800 font-semibold truncate">{session.user?.email}</p>
+                    </div>
+                    <button
+                      onClick={() => { onLogout(); setUserMenuOpen(false); }}
+                      className="w-full px-4 py-2.5 flex items-center gap-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log Out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onAccountClick}
+                className="flex items-center gap-1.5 px-5 py-2.5 rounded-full font-semibold text-ocean-800 border-2 border-ocean-200 hover:border-cyan-400 hover:text-cyan-600 transition-all bg-white/80"
+              >
+                <User className="w-4 h-4" />
+                Account
+              </button>
+            )}
           </div>
 
           <button
@@ -101,6 +155,29 @@ function Navbar() {
               >
                 Inquire Now
               </button>
+              {session ? (
+                <>
+                  <div className="mx-4 py-2 px-4 bg-ocean-50 rounded-xl">
+                    <p className="text-xs text-ocean-400 font-medium uppercase tracking-wider">Signed in as</p>
+                    <p className="text-sm text-ocean-800 font-semibold truncate">{session.user?.email}</p>
+                  </div>
+                  <button
+                    onClick={() => { onLogout(); setIsOpen(false); }}
+                    className="flex items-center gap-2 text-red-600 font-medium py-2 px-4 text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Log Out
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => { onAccountClick(); setIsOpen(false); }}
+                  className="flex items-center gap-2 text-ocean-800 font-medium py-2 px-4 text-left"
+                >
+                  <User className="w-4 h-4" />
+                  Account
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -839,6 +916,22 @@ export default function App() {
   const [showSecretGallery, setShowSecretGallery] = useState(false);
   const [showWaiver, setShowWaiver] = useState(false);
   const [inquiryData, setInquiryData] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+    });
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
   const handleSecretClick = () => {
     setShowPasswordModal(true);
@@ -866,7 +959,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white text-ocean-900 antialiased font-sans">
-      <Navbar />
+      <Navbar session={session} onAccountClick={() => setShowAuthModal(true)} onLogout={handleLogout} />
       <HeroSection />
       <MobileAdvantage />
       <AboutSection onSecretClick={handleSecretClick} />
@@ -878,6 +971,11 @@ export default function App() {
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
         onSuccess={handlePasswordSuccess}
+      />
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={() => setShowAuthModal(false)}
       />
     </div>
   );
