@@ -930,7 +930,12 @@ export default function App() {
   }, []);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error('Error during logout:', err?.message || err);
+    }
+    setSession(null);
   };
 
   const handleSecretClick = () => {

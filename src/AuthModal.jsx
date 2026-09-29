@@ -1,17 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { X, LogIn, UserPlus, Mail, Lock, Key, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
-
-const SUPABASE_URL = 'https://rblifplwgfnwzattljed.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_pVs6uTsUjiI2E1QynJMRnQ_EZ0t82X';
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-  },
-});
+import { supabase } from './lib/supabaseClient';
 
 export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
   const [mode, setMode] = useState('menu');
@@ -57,11 +46,19 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
         options: { emailRedirectTo: window.location.origin },
       });
       if (signUpError) throw signUpError;
+      if (!data) throw new Error('No response received from the server. Please try again.');
       setSignupEmail(email);
       setMode('otp');
       setInfo('A verification code has been sent to your email. Enter it below to confirm your account.');
     } catch (err) {
-      setError(err.message || 'Unable to create account. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('network')) {
+        setError('Unable to connect to the authentication service. Please check your internet connection and try again.');
+      } else if (msg.includes('Invalid API key') || msg.includes('api_key') || msg.includes('apikey')) {
+        setError('Authentication service configuration error. Please contact support.');
+      } else {
+        setError(msg || 'Unable to create account. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -73,16 +70,22 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setInfo('');
     setLoading(true);
     try {
-      const { error: otpError } = await supabase.auth.verifyOtp({
+      const { data, error: otpError } = await supabase.auth.verifyOtp({
         email: signupEmail,
         token: otpCode,
         type: 'signup',
       });
       if (otpError) throw otpError;
+      if (!data) throw new Error('Verification failed. Please try again.');
       onAuthSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'Invalid or expired code. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('network')) {
+        setError('Unable to connect to the authentication service. Please check your connection and try again.');
+      } else {
+        setError(msg || 'Invalid or expired code. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -100,7 +103,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
       if (resendError) throw resendError;
       setInfo('A new verification code has been sent to your email.');
     } catch (err) {
-      setError(err.message || 'Unable to resend code. Please try again.');
+      const msg = err?.message || '';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('network')) {
+        setError('Unable to connect to the authentication service. Please try again.');
+      } else {
+        setError(msg || 'Unable to resend code. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -112,15 +120,25 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess }) {
     setInfo('');
     setLoading(true);
     try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (loginError) throw loginError;
+      if (!data) throw new Error('No response received from the server. Please try again.');
       onAuthSuccess();
       onClose();
     } catch (err) {
-      setError(err.message || 'Invalid email or password.');
+      const msg = err?.message || '';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('network')) {
+        setError('Unable to connect to the authentication service. Please check your internet connection and try again.');
+      } else if (msg.includes('Invalid API key') || msg.includes('api_key') || msg.includes('apikey')) {
+        setError('Authentication service configuration error. Please contact support.');
+      } else if (msg.includes('Invalid login credentials')) {
+        setError('Incorrect email or password. Please try again.');
+      } else {
+        setError(msg || 'Invalid email or password.');
+      }
     } finally {
       setLoading(false);
     }
